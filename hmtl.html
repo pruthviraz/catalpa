@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cataleya's Kitchen | Immersive 3D Menu</title>
+    <!-- Google Fonts for elegant typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            color: #f5ede1;
+        }
+
+        /* Canvas 3D background */
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        /* UI Overlay - Glassmorphic Menu Panel */
+        .menu-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            overflow-y: auto;
+            pointer-events: auto;
+            backdrop-filter: blur(12px);
+            background: radial-gradient(circle at 20% 30%, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.75) 100%);
+        }
+
+        /* Custom scroll */
+        .menu-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .menu-container::-webkit-scrollbar-track {
+            background: rgba(255,215,150,0.2);
+            border-radius: 10px;
+        }
+        .menu-container::-webkit-scrollbar-thumb {
+            background: #e6b15c;
+            border-radius: 10px;
+        }
+
+        .content-wrapper {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+        }
+
+        /* Header Section with neon glow */
+        .hero {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 5rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            margin: 0;
+            text-shadow: 0 0 20px rgba(230, 177, 92, 0.8);
+            background: linear-gradient(135deg, #FFE6B0, #E6B15C);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+            font-weight: 300;
+        }
+        .divider {
+            width: 120px;
+            height: 3px;
+            background: #e6b15c;
+            margin: 1rem auto;
+            border-radius: 4px;
+        }
+
+        /* Menu Grid Layout */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+        .menu-card {
+            background: rgba(20, 15, 10, 0.65);
+            backdrop-filter: blur(16px);
+            border-radius: 2rem;
+            border: 1px solid rgba(230, 177, 92, 0.4);
+            padding: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .menu-card:hover {
+            transform: translateY(-8px);
+            border-color: #e6b15c;
+            box-shadow: 0 20px 30px -10px rgba(0,0,0,0.5), 0 0 15px rgba(230,177,92,0.3);
+        }
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            border-left: 5px solid #e6b15c;
+            padding-left: 1rem;
+            margin-bottom: 1.2rem;
+            color: #ffdd99;
+        }
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 0.7rem 0;
+            border-bottom: 1px dashed rgba(230, 177, 92, 0.3);
+            font-size: 0.95rem;
+        }
+        .item-name {
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        .item-desc {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            display: block;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .item-price {
+            font-weight: 700;
+            color: #e6b15c;
+            font-size: 1.05rem;
+            white-space: nowrap;
+            margin-left: 1rem;
+        }
+        .sub-category {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 1.2rem 0 0.8rem 0;
+            color: #f0ca8c;
+            letter-spacing: -0.3px;
+        }
+        .extras-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.3);
+            border-radius: 1rem;
+            padding: 0.8rem;
+            margin-top: 0.8rem;
+        }
+        .badge {
+            font-size: 0.8rem;
+            background: rgba(230,177,92,0.2);
+            border-radius: 20px;
+            padding: 0.2rem 0.8rem;
+        }
+        hr {
+            border-color: rgba(230,177,92,0.3);
+            margin: 1rem 0;
+        }
+        .drinks-section {
+            margin-top: 1rem;
+        }
+        @media (max-width: 760px) {
+            .hero h1 { font-size: 3rem; }
+            .content-wrapper { padding: 1rem; }
+            .menu-grid { gap: 1rem; }
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 3rem;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            border-top: 1px solid rgba(230,177,92,0.3);
+            padding-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Canvas will be injected here -->
+    <div class="menu-container">
+        <div class="content-wrapper">
+            <div class="hero">
+                <h1>CATALEYA'S KITCHEN</h1>
+                <div class="divider"></div>
+                <p>IMMERSIVE DINING • CRAFT FLAVORS • URBAN VIBE</p>
+            </div>
+
+            <div class="menu-grid">
+                <!-- BURGER CARD -->
+                <div class="menu-card">
+                    <div class="card-title">🍔 BURGER</div>
+                    <div class="menu-item"><div class="item-name">Hamburger <span class="item-desc">Beef Patty, Sauce, Salat, Gurke, Zwiebeln</span></div></div>
+                    <div class="menu-item"><div class="item-name">Cheeseburger <span class="item-desc">+Käse, Beef Patty, Sauce, Salat, Gurke, Zwiebeln</span></div></div>
+                    <div class="menu-item"><div class="item-name">Crispy Chicken Burger <span class="item-desc">Crispy Chicken, Sweet Sour, Mayo, Salat, Zwiebeln</span></div></div>
+                    <div class="menu-item"><div class="item-name">Chili Cheese Burger <span class="item-desc">Beef, Chili Sauce, Jalapeños, Mayo, Salat, Gurke</span></div></div>
+                    <div class="menu-item"><div class="item-name">Double Smash Burger <span class="item-desc">Double Smashed Patty, Ketchup, Gurken, Zwiebeln</span></div></div>
+                    <div class="sub-category">➕ EXTRAS</div>
+                    <div class="extras-row"><span>Beef Patty 3,50€</span><span>Crispy Chicken 2,50€</span><span>Röstzwiebeln 1€</span><span>Jalapenos 1€</span><span>Käse 1€</span></div>
+                </div>
+
+                <!-- HOTDOG & FINGERFOOD CARD -->
+                <div class="menu-card">
+                    <div class="card-title">🌭 HOTDOG</div>
+                    <div class="menu-item"><div class="item-name">Classic Hot Dog <span class="item-desc">Rindswürstchen, Ketchup, Senf, Röstzwiebeln, Gurke, Zwiebeln</span></div></div>
+                    <div class="menu-item"><div class="item-name">Cheesy Hot Dog <span class="item-desc">Rindswürstchen, Ketchup, Cheese Sauce, Röstzwiebeln</span></div></div>
+                    <div class="card-title" style="margin-top: 1rem;">🍟 FINGERFOOD + 1 DIP</div>
+                    <div class="menu-item"><span>Pommes Frites</span><span class="item-price">4,20€</span></div>
+                    <div class="menu-item"><span>Bratkartoffeln</span><span class="item-price">4,50€</span></div>
+                    <div class="menu-item"><span>Süßkartoffelpommes</span><span class="item-price">5,00€</span></div>
+                    <div class="menu-item"><span>Curly Fries</span><span class="item-price">5,00€</span></div>
+                    <div class="menu-item"><span>Filet Bites (6er/9er)</span><span class="item-price">6,50€ / 7,90€</span></div>
+                    <div class="menu-item"><span>Wings (6er/9er)</span><span class="item-price">6,50€ / 7,50€</span></div>
+                    <div class="menu-item"><span>Chicken Nuggets (6er/9er)</span><span class="item-price">6,50€ / 6,50€</span></div>
+                    <div class="menu-item"><span>Mozzarella Sticks (6er/9er)</span><span class="item-price">6,50€ / 7,50€</span></div>
+                </div>
+
+                <!-- DIPS & SALADS -->
+                <div class="menu-card">
+                    <div class="card-title">🥣 DIPS</div>
+                    <div class="extras-row" style="justify-content: flex-start; gap: 0.8rem; flex-wrap: wrap;">
+                        <span>Ketchup 0,80€</span><span>Mayo 0,80€</span><span>BBQ 1,50€</span><span>Süß-Sauer 1,50€</span><span>Sour Creme 1,50€</span>
+                        <span>Aioli 2€</span><span>Cheesy Sauce 2€</span><span>Chili Cheese 2€</span><span>Hausgemachte 2€</span><span>Scharfe Hausgemachte 2€</span>
+                    </div>
+                    <div class="card-title" style="margin-top: 1rem;">🥗 SALATE</div>
+                    <div class="menu-item"><span>Gemischter Salat (Joghurt/Balsamico/Kräuter)</span><span class="item-price">6,90€</span></div>
+                    <div class="menu-item"><span>Cataleya Salat (gebr. Zwiebeln, Champignons, Hähnchen)</span><span class="item-price">9,90€</span></div>
+                    <div class="menu-item"><span>Scampi Salat (Kirschtomaten, Rucola, Scampis)</span><span class="item-price">10,90€</span></div>
+                </div>
+
+                <!-- MAIN COURSES (HAUPTGERICHT) -->
+                <div class="menu-card">
+                    <div class="card-title">🍝 HAUPTGERICHT</div>
+                    <div class="menu-item"><span>Rigatoni Red (Tomaten-Sahne, panierte Hähnchenbrust, Salat)</span><span class="item-price">15,50€</span></div>
+                    <div class="menu-item"><span>Rigatoni Creme (Champignon-Sahne, gegrillte Hähnchenbrust, Salat)</span><span class="item-price">14,50€</span></div>
+                    <div class="menu-item"><span>Beef Creme (Rinderfiletspitzen, Reis, Champignon-Sahne, Salat)</span><span class="item-price">15,90€</span></div>
+                    <div class="menu-item"><span>Schnitzel Cataleya Rice (panierte Hähnchenbrust, Reis, Sahnesauce, Salat)</span><span class="item-price">14,50€</span></div>
+                    <div class="menu-item"><span>Grilled Chicken Rice (gegrillte Hähnchenbrust, Reis, Champignon-Sahne, Salat)</span><span class="item-price">13,50€</span></div>
+                    <div class="menu-item"><span>Schnitzel Cataleya (panierte Hähnchenbrust, Pommes, Sahnesauce, Salat)</span><span class="item-price">14,50€</span></div>
+                    <div class="menu-item"><span>Grilled Chicken (gegrillte Hähnchenbrust, Champignon-Sahne, Pommes, Salat)</span><span class="item-price">13,50€</span></div>
+                    <div class="menu-item"><span>Pomodoro Chicken (Gemüse, Tomaten-Sahne, Pommes, Salat)</span><span class="item-price">13,90€</span></div>
+                </div>
+
+                <!-- PASTA & DESSERTS -->
+                <div class="menu-card">
+                    <div class="card-title">🍝 PASTA</div>
+                    <div class="menu-item"><span>Pasta Napoli (Tomatensoße, Basilikum)</span><span class="item-price">8,50€</span></div>
+                    <div class="menu-item"><span>Pasta Aioli (Knoblauchsoße, Tomaten, Zwiebeln, Oliven)</span><span class="item-price">9,90€</span></div>
+                    <div class="menu-item"><span>Pasta Pollo (Hähnchen, Champignons, Knoblauch-Sahne)</span><span class="item-price">11,50€</span></div>
+                    <div class="menu-item"><span>Pasta Kitchen (panierte Hähnchen, Tomaten-Sahne)</span><span class="item-price">12,50€</span></div>
+                    <div class="menu-item"><span>Pasta Cataleya (Rinderfiletspitzen, Bratkartoffeln, Sahne)</span><span class="item-price">12,90€</span></div>
+                    <div class="menu-item"><span>Pasta Scampi (Garnelen, Kirschtomaten, Hummersauce)</span><span class="item-price">13,50€</span></div>
+                    <div class="menu-item"><span>Pasta Deluxe (Garnelen, Champignons, scharfe Tomaten-Sahne)</span><span class="item-price">13,50€</span></div>
+                </div>
+
+                <!-- DESSERTS & DRINKS -->
+                <div class="menu-card">
+                    <div class="card-title">🍰 DESSERTS</div>
+                    <div class="menu-item"><span>Pancakes (mit 1 Topping)</span><span class="item-price">7,90€</span></div>
+                    <div class="menu-item"><span>Churros (Zimt & Zucker, 1 Topping)</span><span class="item-price">7,90€</span></div>
+                    <div class="menu-item"><span>Kaiserschmarrn (Vanilleeis, 1 Topping)</span><span class="item-price">8,90€</span></div>
+                    <div class="sub-category">🍫 EXTRA TOPPINGS</div>
+                    <div class="extras-row"><span>Nutella 1,50€</span><span>Weiße Schokolade 1,50€</span><span>Vollmilchschokolade 1,50€</span><span>Buenosauce 1,50€</span></div>
+                    <div class="card-title" style="margin-top: 1rem;">🥤 GETRÄNKE</div>
+                    <div class="menu-item"><span>Fritz Cola 0,33l (Mehrweg)</span><span class="item-price">3,20€</span></div>
+                    <div class="menu-item"><span>Fritz Cola SuperZero</span><span class="item-price">3,20€</span></div>
+                    <div class="menu-item"><span>Poulanier Spezi 0,33l</span><span class="item-price">3,20€</span></div>
+                    <div class="menu-item"><span>Elephant Bay Ice Tea Peach / Lemon / Mango Pineapple</span><span class="item-price">3,50€</span></div>
+                    <div class="menu-item"><span>Viva con Aqua still / classic 0,33l (Einweg)</span><span class="item-price">2,60€</span></div>
+                </div>
+            </div>
+            <div class="footer-note">
+                ✨ Genieße unsere Spezialitäten in einer einzigartigen Atmosphäre ✨<br>
+                *Alle Preise in Euro inkl. MwSt.
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Three.js core and add-ons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- setup scene, camera, renderers ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050b12);
+        scene.fog = new THREE.FogExp2(0x050b12, 0.008); // subtle fog for depth
+
+        // Camera: perspective
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 4, 8);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // enable shadows for depth
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // CSS2DRenderer for floating text labels (optional atmospheric text)
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        labelRenderer.domElement.style.zIndex = '5';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // --- Lighting System for immersive warm & moody ---
+        // Ambient
+        const ambientLight = new THREE.AmbientLight(0x332211);
+        scene.add(ambientLight);
+        // Main directional light (warm)
+        const mainLight = new THREE.DirectionalLight(0xffcc88, 1.2);
+        mainLight.position.set(5, 10, 3);
+        mainLight.castShadow = true;
+        mainLight.receiveShadow = true;
+        mainLight.shadow.mapSize.width = 1024;
+        mainLight.shadow.mapSize.height = 1024;
+        scene.add(mainLight);
+        // Fill light (cool rim)
+        const fillLight = new THREE.PointLight(0x4466cc, 0.5);
+        fillLight.position.set(-3, 2, -4);
+        scene.add(fillLight);
+        // Warm back rim
+        const rimLight = new THREE.PointLight(0xcc8844, 0.7);
+        rimLight.position.set(2, 3, -5);
+        scene.add(rimLight);
+        // Additional accent lights
+        const tableGlow = new THREE.PointLight(0xe6a33a, 0.4);
+        tableGlow.position.set(0, 1, 0);
+        scene.add(tableGlow);
+
+        // --- FLOATING PARTICLES (immersive) ---
+        const particleCount = 1200;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const posArray = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
+            posArray[i*3] = (Math.random() - 0.5) * 40;
+            posArray[i*3+1] = (Math.random() - 0.5) * 12 + 2;
+            posArray[i*3+2] = (Math.random() - 0.5) * 25 - 10;
+        }
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xe6b15c,
+            size: 0.07,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending
+        });
+        const particles = new THREE.Points(particlesGeometry, particleMaterial);
+        scene.add(particles);
+
+        // --- CENTERPIECE: Rotating abstract geometric "floating kitchen" ---
+        const groupCenter = new THREE.Group();
+        
+        // Main Torus Knot (elegant)
+        const knotGeo = new THREE.TorusKnotGeometry(1.2, 0.28, 180, 24, 3, 4);
+        const knotMat = new THREE.MeshStandardMaterial({ color: 0xd99e48, emissive: 0x552200, emissiveIntensity: 0.4, metalness: 0.7, roughness: 0.3 });
+        const knot = new THREE.Mesh(knotGeo, knotMat);
+        knot.castShadow = true;
+        groupCenter.add(knot);
+        
+        // Inner sphere with texture-like glow
+        const coreGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.65, 32, 32),
+            new THREE.MeshStandardMaterial({ color: 0xffaa55, emissive: 0xdd8822, emissiveIntensity: 0.8, metalness: 0.2, roughness: 0.1 })
+        );
+        groupCenter.add(coreGlow);
+        
+        // Floating rings
+        const ringGeo = new THREE.TorusGeometry(1.5, 0.08, 64, 200);
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0xf3bc6c, emissive: 0x442200 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        groupCenter.add(ring);
+        
+        const ring2 = new THREE.Mesh(ringGeo, ringMat);
+        ring2.rotation.z = Math.PI / 3;
+        ring2.rotation.x = 0.8;
+        groupCenter.add(ring2);
+        
+        scene.add(groupCenter);
+        
+        // --- Floating glowing orbs around (decorative) ---
+        const orbCount = 24;
+        const orbs = [];
+        for (let i = 0; i < orbCount; i++) {
+            const orbMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0xff6600, emissiveIntensity: 0.3 });
+            const orb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), orbMat);
+            const angle = (i / orbCount) * Math.PI * 2;
+            const radius = 2.4;
+            orb.userData = { angle, radius, speed: 0.005 + Math.random() * 0.01, yOffset: Math.sin(i) * 0.8 };
+            orb.position.x = Math.cos(angle) * radius;
+            orb.position.z = Math.sin(angle) * radius;
+            orb.position.y = Math.sin(angle * 2) * 0.6;
+            groupCenter.add(orb);
+            orbs.push(orb);
+        }
+        
+        // --- Background: subtle floating "menu cards" illusion via CSS2DRenderer (just a couple of elegant text labels)---
+        const makeFloatingLabel = (text, x, y, z) => {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = '#f5d9a8';
+            div.style.fontSize = '14px';
+            div.style.fontWeight = '300';
+            div.style.textShadow = '0 0 8px rgba(0,0,0,0.5)';
+            div.style.background = 'rgba(0,0,0,0.4)';
+            div.style.padding = '4px 12px';
+            div.style.borderRadius = '30px';
+            div.style.backdropFilter = 'blur(4px)';
+            div.style.border = '1px solid rgba(230,177,92,0.4)';
+            div.style.fontFamily = "'Inter', sans-serif";
+            const label = new CSS2DObject(div);
+            label.position.set(x, y, z);
+            scene.add(label);
+            return label;
+        };
+        
+        makeFloatingLabel('✦ BURGER ARTISAN ✦', -2.2, 1.6, -1.8);
+        makeFloatingLabel('PASTA FRESCA', 2.5, 1.2, -2.0);
+        makeFloatingLabel('CRISPY CHICKEN', -1.8, -0.5, 2.3);
+        makeFloatingLabel('CATALEYA‘S SIGNATURE', 1.9, -0.2, 2.5);
+        
+        // --- Floor reflective plane (invisible but catches shadows) ---
+        const planeHelper = new THREE.Mesh(
+            new THREE.PlaneGeometry(12, 12),
+            new THREE.ShadowMaterial({ opacity: 0.5, color: 0x000000, transparent: true, side: THREE.DoubleSide })
+        );
+        planeHelper.rotation.x = -Math.PI / 2;
+        planeHelper.position.y = -1.2;
+        planeHelper.receiveShadow = true;
+        scene.add(planeHelper);
+        
+        // additional small floating cubes / "spices"
+        const spiceGroup = new THREE.Group();
+        for (let i = 0; i < 60; i++) {
+            const size = 0.05 + Math.random() * 0.08;
+            const cubeMat = new THREE.MeshStandardMaterial({ color: 0xd9a343, emissive: 0x331c00, metalness: 0.4 });
+            const cube = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), cubeMat);
+            cube.position.set((Math.random() - 0.5) * 5, Math.random() * 2.5 - 0.5, (Math.random() - 0.5) * 5);
+            cube.castShadow = true;
+            spiceGroup.add(cube);
+        }
+        scene.add(spiceGroup);
+        
+        // subtle light beam effect: add a few point lights around center
+        const movingLight = new THREE.PointLight(0xe6a15c, 0.8, 8);
+        movingLight.castShadow = false;
+        scene.add(movingLight);
+        
+        // --- Camera Controls: gentle orbiting if desired (but we want static interactive? make auto-rotate or simple)
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.2;
+        controls.enableZoom = true;
+        controls.enablePan = false;
+        controls.target.set(0, 0.5, 0);
+        
+        // --- Animate all elements & particle drift ---
+        let time = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.012;
+            
+            // Rotate central group
+            groupCenter.rotation.y = time * 0.2;
+            groupCenter.rotation.x = Math.sin(time * 0.2) * 0.1;
+            knot.rotation.x = time * 0.3;
+            knot.rotation.z = time * 0.2;
+            ring.rotation.z += 0.008;
+            ring2.rotation.x += 0.005;
+            ring2.rotation.y += 0.007;
+            
+            // orbiting orbs
+            orbs.forEach((orb, idx) => {
+                const data = orb.userData;
+                const newAngle = data.angle + time * data.speed;
+                const rad = data.radius + Math.sin(time * 1.5 + idx) * 0.1;
+                orb.position.x = Math.cos(newAngle) * rad;
+                orb.position.z = Math.sin(newAngle) * rad;
+                orb.position.y = Math.sin(newAngle * 2) * 0.5 + Math.sin(time * 2 + idx) * 0.15;
+            });
+            
+            // moving light goes around
+            movingLight.position.x = Math.sin(time * 0.7) * 2.2;
+            movingLight.position.z = Math.cos(time * 0.5) * 2.2;
+            movingLight.position.y = 1.2 + Math.sin(time * 1.2) * 0.6;
+            
+            // particles drift
+            particles.rotation.y = time * 0.02;
+            particles.rotation.x = Math.sin(time * 0.1) * 0.1;
+            spiceGroup.rotation.y = time * 0.03;
+            
+            // camera auto-orbit if desired (controls handles autoRotate)
+            controls.update();
+            
+            // render
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // handle window resize
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // small console log to indicate ready
+        console.log('3D Immersive Menu Active — Cataleya’s Kitchen');
+    </script>
+</body>
+</html>
